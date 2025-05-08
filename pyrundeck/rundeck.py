@@ -212,6 +212,10 @@ class Rundeck(object):
             }
         return self.__get(url, params=params)
 
+    def delete_job(self, job_id):
+        url = "{}/job/{}".format(self.API_URL, job_id)
+        return self.__delete(url)
+
     def _post_file(
         self,
         file_name,
