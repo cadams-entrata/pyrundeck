@@ -108,7 +108,7 @@ class Rundeck(object):
         return self.__request("POST", url, params, upload_file)
 
     def __delete(self, url, params=None):
-        return self.__request("DELETE", url, params)
+        return self.__request("DELETE", url, params, format="text")
 
     def list_tokens(self, user=None):
         url = "{}/tokens".format(self.API_URL)
