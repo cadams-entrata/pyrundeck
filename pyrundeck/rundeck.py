@@ -441,6 +441,10 @@ class Rundeck(object):
     def get_runner(self, runner_id):
         url = f"{self.API_URL}/runnerManagement/runner/{runner_id}"
         return self.__get(url)
+
+    def download_runner_jar(self, download_token, file_path):
+        url = f"{self.API_URL}/runnerManagement/download/{download_token}"
+        return self.__get_file(url, file_path)
     
 
 if __name__ == "__main__":
