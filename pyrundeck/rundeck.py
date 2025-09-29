@@ -420,13 +420,14 @@ class Rundeck(object):
     
     ## Enterprise Runners ##
 
-    def create_runner(self, name, description, assigned_projects={}, tags=''):
+    def create_runner(self, name, description, installation_type, assigned_projects={}, tags=''):
         url = f"{self.API_URL}/runnerManagement/runners"
         params = {
             "name": name,
             "description": description,
             "assignedProjects": assigned_projects,
-            "tagNames": tags
+            "tagNames": tags,
+            "installationType": installation_type
         }
         return self.__post(url, params=params)
     
