@@ -77,7 +77,7 @@ class Rundeck(object):
                 for chunk in r.iter_content(chunk_size=512):
                     if chunk:  # filter out keep-alive new chunks
                         f.write(chunk)
-            return r.ok
+            return r.text
         else:
             r = requests.request(method, url, **options)
             logger.debug(r.text)
