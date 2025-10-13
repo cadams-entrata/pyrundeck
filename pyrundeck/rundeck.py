@@ -75,12 +75,11 @@ class Rundeck(object):
             try:
                 r = requests.get(url, stream=True, **options)
                 r.raise_for_status()
-                r_text = r.text
                 with open(get_file_path, "wb") as f:
                     for chunk in r.iter_content(chunk_size=512):
                         if chunk:  # filter out keep-alive new chunks
                             f.write(chunk)
-                return r_text
+                return True
             except (requests.exceptions.HTTPError, RuntimeError) as err:
                 try:
                     return (False, err.response.text)
