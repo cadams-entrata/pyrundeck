@@ -448,6 +448,10 @@ class Rundeck(object):
         url = f"{self.API_URL}/runnerManagement/download/{download_token}"
         return self.__get_file(url, file_path)
     
+    def delete_runner(self, runner_id):
+        url = f"{self.API_URL}/runnerManagement/runner/{runner_id}"
+        return self.__delete(url)
+    
 
 if __name__ == "__main__":
     from pprint import pprint
