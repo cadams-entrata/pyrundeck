@@ -80,7 +80,7 @@ class Rundeck(object):
                         if chunk:  # filter out keep-alive new chunks
                             f.write(chunk)
                 return r.text
-            except requests.exceptions.RequestException as err:
+            except requests.exceptions.HTTPError as err:
                 return (False, err.response.text)
         else:
             r = requests.request(method, url, **options)
