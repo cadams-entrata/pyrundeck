@@ -72,12 +72,16 @@ class Rundeck(object):
             options["json"] = params
 
         if method == 'GET_FILE':
-            r = requests.get(url, stream=True, **options)
-            with open(get_file_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=512):
-                    if chunk:  # filter out keep-alive new chunks
-                        f.write(chunk)
-            return r.text
+            try:
+                r = requests.get(url, stream=True, **options)
+                r.raise_for_status()
+                with open(get_file_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=512):
+                        if chunk:  # filter out keep-alive new chunks
+                            f.write(chunk)
+                return r.text
+            except requests.exceptions.RequestException as err:
+                return (False, err.response.text)
         else:
             r = requests.request(method, url, **options)
             logger.debug(r.text)
