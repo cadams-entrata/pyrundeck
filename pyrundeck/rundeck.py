@@ -427,16 +427,16 @@ class Rundeck(object):
     
     ## Enterprise Runners ##
 
-    def create_runner(self, name, description, installation_type=None, assigned_projects={}, tags=''):
+    def create_runner(self, name, description, installation_type='linux', replica_type='manual', assigned_projects={}, tags=''):
         url = f"{self.API_URL}/runnerManagement/runners"
         params = {
             "name": name,
             "description": description,
+            "replicaType": replica_type,
+            "installationType": installation_type,
             "assignedProjects": assigned_projects,
             "tagNames": tags
         }
-        if installation_type:
-            params["installationType"] = installation_type
         return self.__post(url, params=params)
     
     def regenerate_runner_credentials(self, runner_id):
