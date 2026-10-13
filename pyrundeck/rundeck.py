@@ -45,16 +45,24 @@ class Rundeck(object):
         return r.cookies["JSESSIONID"]
 
     def __request(
-        self, method, url, params=None, upload_file=None, get_file_path=None, format="json"
+        self,
+        method,
+        url,
+        params=None,
+        upload_file=None,
+        get_file_path=None,
+        format="json",
+        content_type=None,
     ):
         logger.info(f"{method} {url} Params: {params}")
         cookies = dict()
         if self.auth_cookie:
             cookies["JSESSIONID"] = self.auth_cookie
 
+        media_type = "text/plain" if format == "text" else f"application/{format}"
         h = {
-            "Accept": f"application/{format}",
-            "Content-Type": f"application/{format}",
+            "Accept": media_type,
+            "Content-Type": content_type or media_type,
             "X-Rundeck-Auth-Token": self.token,
         }
         options = {
@@ -68,6 +76,8 @@ class Rundeck(object):
             options["params"] = params
             options["data"] = upload_file
             # options["headers"]["Content-Type"] = "octet/stream"
+        elif format == "text":
+            options["data"] = params
         else:
             options["json"] = params
 
@@ -109,8 +119,15 @@ class Rundeck(object):
     def __get_file(self, url, file_path, params=None, format='json'):
         return self.__request("GET_FILE", url, params, get_file_path=file_path, format=format)
 
-    def __post(self, url, params=None, upload_file=None):
-        return self.__request("POST", url, params, upload_file)
+    def __post(self, url, params=None, upload_file=None, format="json", content_type=None):
+        return self.__request(
+            "POST", url, params, upload_file, format=format, content_type=content_type
+        )
+
+    def __put(self, url, params=None, upload_file=None, format="json", content_type=None):
+        return self.__request(
+            "PUT", url, params, upload_file, format=format, content_type=content_type
+        )
 
     def __delete(self, url, params=None):
         return self.__request("DELETE", url, params, format="text")
@@ -147,6 +164,45 @@ class Rundeck(object):
     def get_acl_policy(self, policy):
         url = f"{self.API_URL}/system/acl/{policy}"
         return self.__get(url)
+
+    def get_execution_mode(self):
+        return self.__get(f"{self.API_URL}/system/executions/status")
+
+    def list_metrics(self):
+        return self.__get(f"{self.API_URL}/metrics")
+
+    def get_metrics(self):
+        return self.__get(f"{self.API_URL}/metrics/metrics")
+
+    def get_metrics_healthcheck(self):
+        return self.__get(f"{self.API_URL}/metrics/healthcheck")
+
+    def get_metrics_ping(self):
+        return self.__get(f"{self.API_URL}/metrics/ping")
+
+    def get_metrics_threads(self):
+        return self.__get(f"{self.API_URL}/metrics/threads")
+
+    def list_cluster_nodes(self):
+        return self.__get(f"{self.API_URL}/system/cluster/nodes")
+
+    def get_cluster_node(self, node):
+        return self.__get(f"{self.API_URL}/system/cluster/node/{node}")
+
+    def get_cluster_info(self):
+        return self.__get(f"{self.API_URL}/system/cluster/info")
+
+    def list_system_acls(self):
+        return self.list_system_acl_policies()
+
+    def create_system_acl(self, policy, definition):
+        return self.__post(f"{self.API_URL}/system/acl/{policy}", definition)
+
+    def update_system_acl(self, policy, definition):
+        return self.__put(f"{self.API_URL}/system/acl/{policy}", definition)
+
+    def delete_system_acl(self, policy):
+        return self.__delete(f"{self.API_URL}/system/acl/{policy}")
     
     ## Authentication Tokens ##
 
@@ -159,10 +215,6 @@ class Rundeck(object):
     def get_token(self, token_id):
         url = f"{self.API_URL}/token/{token_id}"
         return self.__get(url)
-
-    def get_job_def(self, job_id, format="json"):
-        url = f"{self.API_URL}/job/{job_id}"
-        return self.__get(url, format=format)
 
     def create_token(self, user, roles="*", duration=None):
         url = f"{self.API_URL}/tokens/{user}"
@@ -187,15 +239,75 @@ class Rundeck(object):
         url = f"{self.API_URL}/projects"
         return self.__get(url)
 
-    def list_jobs(self, project, tags=None):
-        url = f"{self.API_URL}/project/{project}/jobs"
-        params = {"tags": tags} if tags else None
-        return self.__get(url, params=params)
-    
-    def get_project_history(self, project, job_id=None):
-        url = f"{self.API_URL}/project/{project}/history"
-        params = {"jobIdFilter": job_id} if job_id else None
-        return self.__get(url, params=params)
+    def create_project(self, name, config=None):
+        """Create a project, optionally with its Rundeck configuration."""
+        return self.__post(
+            f"{self.API_URL}/projects", {"name": name, "config": config or {}}
+        )
+
+    def get_project(self, project):
+        return self.__get(f"{self.API_URL}/project/{project}")
+
+    def delete_project(self, project):
+        return self.__delete(f"{self.API_URL}/project/{project}")
+
+    def get_project_config(self, project):
+        return self.__get(f"{self.API_URL}/project/{project}/config")
+
+    def update_project_config(self, project, config):
+        return self.__put(f"{self.API_URL}/project/{project}/config", config)
+
+    def get_project_config_key(self, project, key):
+        return self.__get(f"{self.API_URL}/project/{project}/config/{key}")
+
+    def set_project_config_key(self, project, key, value):
+        return self.__put(f"{self.API_URL}/project/{project}/config/{key}", {"value": value})
+
+    def delete_project_config_key(self, project, key):
+        return self.__delete(f"{self.API_URL}/project/{project}/config/{key}")
+
+    def get_project_readme(self, project):
+        return self.__get(f"{self.API_URL}/project/{project}/readme.md", format="text")
+
+    def update_project_readme(self, project, content):
+        return self.__put(
+            f"{self.API_URL}/project/{project}/readme.md",
+            content,
+            format="text",
+            content_type="text/plain",
+        )
+
+    def delete_project_readme(self, project):
+        return self.__delete(f"{self.API_URL}/project/{project}/readme.md")
+
+    def get_project_motd(self, project):
+        return self.__get(f"{self.API_URL}/project/{project}/motd.md", format="text")
+
+    def update_project_motd(self, project, content):
+        return self.__put(
+            f"{self.API_URL}/project/{project}/motd.md",
+            content,
+            format="text",
+            content_type="text/plain",
+        )
+
+    def delete_project_motd(self, project):
+        return self.__delete(f"{self.API_URL}/project/{project}/motd.md")
+
+    def list_project_acls(self, project):
+        return self.__get(f"{self.API_URL}/project/{project}/acl/")
+
+    def get_project_acl(self, project, policy):
+        return self.__get(f"{self.API_URL}/project/{project}/acl/{policy}")
+
+    def create_project_acl(self, project, policy, definition):
+        return self.__post(f"{self.API_URL}/project/{project}/acl/{policy}", definition)
+
+    def update_project_acl(self, project, policy, definition):
+        return self.__put(f"{self.API_URL}/project/{project}/acl/{policy}", definition)
+
+    def delete_project_acl(self, project, policy):
+        return self.__delete(f"{self.API_URL}/project/{project}/acl/{policy}")
 
     def project_archive_export(self, project, file_path):
         url = f'{self.API_URL}/project/{project}/export'
@@ -239,7 +351,22 @@ class Rundeck(object):
         url = f'{self.API_URL}/project/{project}/export/download/{export_token}'
         return self.__get_file(url, file_path)
 
+    def import_project_archive(self, project, archive, **options):
+        """Import a project archive. ``archive`` is a binary file object."""
+        return self.__put(
+            f"{self.API_URL}/project/{project}/import", options or None, archive
+        )
+
     ## Jobs ##
+
+    def list_jobs(self, project, tags=None):
+        url = f"{self.API_URL}/project/{project}/jobs"
+        params = {"tags": tags} if tags else None
+        return self.__get(url, params=params)
+
+    def get_job_def(self, job_id, format="json"):
+        url = f"{self.API_URL}/job/{job_id}"
+        return self.__get(url, format=format)
 
     def get_job_meta(self, job_id):
         url = f"{self.API_URL}/job/{job_id}/meta"
@@ -272,6 +399,18 @@ class Rundeck(object):
     def get_job_tags(self, job_id):
         url = f"{self.API_URL}/job/{job_id}/tags"
         return self.__get(url)
+
+    def get_job_forecast(self, job_id, days=None, past=None):
+        params = {"days": days, "past": past}
+        return self.__get(
+            f"{self.API_URL}/job/{job_id}/forecast",
+            params={k: v for k, v in params.items() if v is not None},
+        )
+
+    def retry_job_execution(self, job_id, execution_id, **options):
+        return self.__post(
+            f"{self.API_URL}/job/{job_id}/retry/{execution_id}", options or None
+        )
     
     def run_job(
         self,
@@ -311,7 +450,15 @@ class Rundeck(object):
         url = f"{self.API_URL}/job/{job_id}"
         return self.__delete(url)
 
+    def delete_job_executions(self, job_id):
+        return self.__delete(f"{self.API_URL}/job/{job_id}/executions")
+
     ## Executions ##
+
+    def get_project_history(self, project, job_id=None):
+        url = f"{self.API_URL}/project/{project}/history"
+        params = {"jobIdFilter": job_id} if job_id else None
+        return self.__get(url, params=params)
 
     def get_running_jobs(self, project, job_id=None):
         """This requires API version 32"""
@@ -377,6 +524,36 @@ class Rundeck(object):
         url = f"{self.API_URL}/execution/{exec_id}/output"
         return self.__get(url)
 
+    def get_execution_output(self, exec_id, node=None, step=None, **params):
+        """Retrieve execution output, optionally scoped to a node and/or step."""
+        path = f"/execution/{exec_id}/output"
+        if node is not None:
+            path += f"/node/{node}"
+        if step is not None:
+            path += f"/step/{step}"
+        return self.__get(f"{self.API_URL}{path}", params=params or None)
+
+    def get_execution_output_state(self, exec_id, **params):
+        return self.__get(
+            f"{self.API_URL}/execution/{exec_id}/output/state", params=params or None
+        )
+
+    def list_execution_input_files(self, exec_id):
+        return self.__get(f"{self.API_URL}/execution/{exec_id}/input/files")
+
+    def get_execution_input_file(self, exec_id, file_id, file_path):
+        return self.__get_file(
+            f"{self.API_URL}/execution/{exec_id}/input/file/{file_id}", file_path
+        )
+
+    def get_execution_metrics(self, **params):
+        return self.__get(f"{self.API_URL}/executions/metrics", params=params or None)
+
+    def get_project_execution_metrics(self, project, **params):
+        return self.__get(
+            f"{self.API_URL}/project/{project}/executions/metrics", params=params or None
+        )
+
     def execution_info_by_id(self, exec_id):
         url = f"{self.API_URL}/execution/{exec_id}"
         return self.__get(url)
@@ -394,7 +571,7 @@ class Rundeck(object):
         params = {"ids": exec_ids}
         return self.__post(url, params=params)
 
-    ## Files ##    
+    ## Job Option Files ##
 
     def upload_file(self, job_id, option_name, file, params=None):
         """This requires API version 19"""
@@ -415,7 +592,21 @@ class Rundeck(object):
                 "For example: file = open(path, 'rb')"
             )
 
-    ## Resources ##
+    ## Ad-hoc Commands ##
+
+    def run_command(self, project, command, **options):
+        params = {"exec": command, **options}
+        return self.__post(f"{self.API_URL}/project/{project}/run/command", params)
+
+    def run_script(self, project, script, **options):
+        params = {"script": script, **options}
+        return self.__post(f"{self.API_URL}/project/{project}/run/script", params)
+
+    def run_script_url(self, project, url, **options):
+        params = {"scriptURL": url, **options}
+        return self.__post(f"{self.API_URL}/project/{project}/run/url", params)
+
+    ## Nodes and Resource Sources ##
 
     def list_resources(self, project):
         url = f"{self.API_URL}/project/{project}/resources"
@@ -424,6 +615,97 @@ class Rundeck(object):
     def get_resource_info(self, project, resource):
         url = f"{self.API_URL}/project/{project}/resource/{resource}"
         return self.__get(url)
+
+    def list_resource_sources(self, project):
+        return self.__get(f"{self.API_URL}/project/{project}/sources")
+
+    def get_resource_source(self, project, index):
+        return self.__get(f"{self.API_URL}/project/{project}/source/{index}")
+
+    def get_resource_source_resources(self, project, index, format="json"):
+        return self.__get(
+            f"{self.API_URL}/project/{project}/source/{index}/resources", format=format
+        )
+
+    def update_resource_source_resources(self, project, index, resources):
+        return self.__post(
+            f"{self.API_URL}/project/{project}/source/{index}/resources", resources
+        )
+
+    ## Key Storage ##
+
+    def list_keys(self, path=""):
+        path = path.strip("/")
+        suffix = f"/{path}" if path else ""
+        return self.__get(f"{self.API_URL}/storage/keys{suffix}/")
+
+    def get_key_metadata(self, path):
+        return self.__get(f"{self.API_URL}/storage/keys/{path.strip('/')}")
+
+    def delete_key(self, path):
+        return self.__delete(f"{self.API_URL}/storage/keys/{path.strip('/')}")
+
+    def upload_key(self, path, content, key_type="private", update=False):
+        """Store a private key, public key, or password in Key Storage.
+
+        ``key_type`` must be ``private``, ``public``, or ``password``. Content
+        may be bytes or an open binary file object.
+        """
+        content_types = {
+            "private": "application/octet-stream",
+            "public": "application/pgp-keys",
+            "password": "application/x-rundeck-data-password",
+        }
+        try:
+            content_type = content_types[key_type]
+        except KeyError:
+            raise ValueError("key_type must be private, public, or password")
+        method = self.__put if update else self.__post
+        return method(
+            f"{self.API_URL}/storage/keys/{path.strip('/')}",
+            upload_file=content,
+            content_type=content_type,
+        )
+
+    ## Users ##
+
+    def get_user_profile(self):
+        return self.__get(f"{self.API_URL}/user/profile")
+
+    def list_user_roles(self):
+        return self.__get(f"{self.API_URL}/user/roles")
+
+    def list_users(self, **params):
+        return self.__get(f"{self.API_URL}/user/list", params=params or None)
+
+    ## Scheduler ##
+
+    def take_scheduler_leadership(self, jobs=None):
+        params = {"jobs": jobs} if jobs is not None else None
+        return self.__put(f"{self.API_URL}/scheduler/takeover", params)
+
+    ## SCM ##
+
+    def get_scm_status(self, project, integration):
+        return self.__get(f"{self.API_URL}/project/{project}/scm/{integration}/status")
+
+    def get_scm_config(self, project, integration):
+        return self.__get(f"{self.API_URL}/project/{project}/scm/{integration}/config")
+
+    def update_scm_config(self, project, integration, config):
+        return self.__put(
+            f"{self.API_URL}/project/{project}/scm/{integration}/config", config
+        )
+
+    def get_scm_action_input(self, project, integration, action):
+        return self.__get(
+            f"{self.API_URL}/project/{project}/scm/{integration}/action/{action}/input"
+        )
+
+    def perform_scm_action(self, project, integration, action, input=None):
+        return self.__post(
+            f"{self.API_URL}/project/{project}/scm/{integration}/action/{action}", input
+        )
     
     ## Enterprise Runners ##
 

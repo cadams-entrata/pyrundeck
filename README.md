@@ -5,7 +5,9 @@
 ![PyPI - License](https://img.shields.io/pypi/l/pyrundeck)
 ![Python Lint](https://github.com/pschmitt/pyrundeck/workflows/Python%20Lint/badge.svg)
 
-This is a Python REST API client for Rundeck 2.6+
+This is a Python REST API client for Rundeck 2.6+. The client defaults to API
+version 18 for compatibility; new Rundeck installations should pass a current
+supported API version explicitly.
 
 ## Example
 
@@ -46,6 +48,15 @@ response = rd.upload_file(RUNDECK_JOB_ID, OPTION_NAME, FILE_NAME_STRING_OR_IOFIL
 file_key = response['options'][OPTION_NAME]
 rd.run_job(RUNDECK_JOB_ID, options={OPTION_NAME: file_key})
 ```
+
+## API coverage
+
+In addition to jobs and executions, the client provides wrappers for project
+configuration and archives, resource sources, ad-hoc commands, Key Storage,
+system and project ACLs, system metrics and cluster information, user and
+scheduler endpoints, and SCM integrations. Methods follow the API endpoint
+names (for example, `get_project_config`, `upload_key`,
+`get_execution_output`, and `perform_scm_action`).
 
 ## See also
 
